@@ -17,13 +17,14 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-public class FilmController {
+public class FilmController extends ModelController<Film>{
 
     private Map<Long, Film> films = new HashMap<>();
     private Long id = 1L;
 
     @PostMapping("/films")
-    public ResponseEntity<Film> addFilm(@Valid @RequestBody Film film) {
+    @Override
+    public ResponseEntity<Film> add(@Valid @RequestBody Film film) {
         if (film.getId() == null) {
             film.setId(id++);
         }
@@ -40,7 +41,8 @@ public class FilmController {
     }
 
     @PutMapping("/films")
-    public ResponseEntity<Film> updateFilm(@RequestBody Film film) {
+    @Override
+    public ResponseEntity<Film> update(@RequestBody Film film) {
         try {
             if (isReleaseDateValid(film.getReleaseDate()) && films.containsKey(film.getId())) {
                 films.put(film.getId(), film);
@@ -56,7 +58,8 @@ public class FilmController {
     }
 
     @GetMapping("/films")
-    public List<Film> getFilms() {
+    @Override
+    public List<Film> get() {
         return new ArrayList<>(films.values());
     }
 

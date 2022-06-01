@@ -16,13 +16,14 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-public class UserController {
+public class UserController extends ModelController<User> {
 
     private Map<Long, User> users = new HashMap<>();
     private Long id = 1L;
 
     @PostMapping("/users")
-    public ResponseEntity<User> addUser(@Valid @RequestBody User user) {
+    @Override
+    public ResponseEntity<User> add(@Valid @RequestBody User user) {
         if (user.getId() == null) {
             user.setId(id++);
         }
@@ -40,7 +41,8 @@ public class UserController {
     }
 
     @PutMapping("/users")
-    public ResponseEntity<User> updateUser(@Valid @RequestBody User user) {
+    @Override
+    public ResponseEntity<User> update(@Valid @RequestBody User user) {
         try {
             if (isLoginValid(user.getLogin()) && users.containsKey(user.getId())) {
                 user = checkName(user);
@@ -57,7 +59,8 @@ public class UserController {
     }
 
     @GetMapping("/users")
-    public List<User> getUsers() {
+    @Override
+    public List<User> get() {
         return new ArrayList<>(users.values());
     }
 
