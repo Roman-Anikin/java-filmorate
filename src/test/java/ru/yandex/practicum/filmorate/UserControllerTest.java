@@ -5,20 +5,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UserController.class)
+@AutoConfigureMockMvc
+@SpringBootTest
 public class UserControllerTest {
 
     @Autowired
@@ -155,7 +157,7 @@ public class UserControllerTest {
         user.setBirthday(LocalDate.of(2000, 1, 1));
 
         MockHttpServletRequestBuilder mockRequest = putRequest(user);
-        mockMvc.perform(mockRequest).andExpect(status().isInternalServerError());
+        mockMvc.perform(mockRequest).andExpect(status().isNotFound());
 
         mockRequest = postRequest(user);
         mockMvc.perform(mockRequest);
@@ -168,8 +170,154 @@ public class UserControllerTest {
         user2.setBirthday(LocalDate.of(2000, 1, 1));
 
         mockRequest = putRequest(user2);
-        mockMvc.perform(mockRequest).andExpect(status().isInternalServerError());
+        mockMvc.perform(mockRequest).andExpect(status().isNotFound());
     }
+
+    @Test
+    public void getUserById() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name", is("Nick")));
+    }
+
+    @Test
+    public void addFriend() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user2 = new User();
+        user2.setEmail("asdf@mail.com");
+        user2.setLogin("asdfg");
+        user2.setName("Name");
+        user2.setBirthday(LocalDate.of(2000, 10, 10));
+
+        mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.friendsIds", hasSize(1)))
+                .andExpect(jsonPath("$.friendsIds[0]", is(2)));
+    }
+
+    @Test
+    public void removeFriend() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user2 = new User();
+        user2.setEmail("asdf@mail.com");
+        user2.setLogin("asdfg");
+        user2.setName("Name");
+        user2.setBirthday(LocalDate.of(2000, 10, 10));
+
+        mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.delete(url + "/1/friends/2");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.friendsIds", empty()));
+    }
+
+    @Test
+    public void getFriends() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user2 = new User();
+        user2.setEmail("asdf@mail.com");
+        user2.setLogin("asdfg");
+        user2.setName("Name");
+        user2.setBirthday(LocalDate.of(2000, 10, 10));
+
+        mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1/friends");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].friendsIds", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is(2)));
+    }
+
+    @Test
+    public void getCommonFriends() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user2 = new User();
+        user2.setEmail("asdf@mail.com");
+        user2.setLogin("asdfg");
+        user2.setName("Name");
+        user2.setBirthday(LocalDate.of(2000, 10, 10));
+
+        mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user3 = new User();
+        user3.setEmail("zxcv@mail.com");
+        user3.setLogin("zxcvb");
+        user3.setName("New name");
+        user3.setBirthday(LocalDate.of(2010, 1, 1));
+
+        mockRequest = postRequest(user3);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/3");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/2/friends/common/3");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].friendsIds", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is(1)));
+    }
+
 
     private @NotNull MockHttpServletRequestBuilder postRequest(User user) throws JsonProcessingException {
         return MockMvcRequestBuilders.post(url)

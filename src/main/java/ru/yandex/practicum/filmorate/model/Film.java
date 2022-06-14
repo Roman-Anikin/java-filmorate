@@ -6,12 +6,16 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Setter
 @Getter
 @NoArgsConstructor
 @ToString
 public class Film {
+
+    private Set<Long> likes = new HashSet<>();
 
     private Long id;
 
