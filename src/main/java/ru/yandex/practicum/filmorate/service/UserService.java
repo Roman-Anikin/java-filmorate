@@ -8,7 +8,6 @@ import ru.yandex.practicum.filmorate.exception.ObjectAlreadyExistException;
 import ru.yandex.practicum.filmorate.exception.ObjectNotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.ArrayList;
@@ -17,23 +16,24 @@ import java.util.Set;
 
 @Slf4j
 @Service
-public class UserService {
+public class UserService extends BaseService<User> {
 
     private final UserStorage userStorage;
     private Long id = 1L;
 
     @Autowired
-    public UserService(InMemoryUserStorage userStorage) {
+    public UserService(UserStorage userStorage) {
         this.userStorage = userStorage;
     }
 
-    public User addFriend(Long userId, Long friendId) {
+    @Override
+    public User add(Long userId, Long friendId) {
         if (userStorage.getUsers().containsKey(userId)) {
             if (userStorage.getUsers().containsKey(friendId)) {
-                getUserById(userId).getFriendsIds().add(friendId);
-                getUserById(friendId).getFriendsIds().add(userId);
-                log.info("Пользователи {} и {} стали друзьями", getUserById(userId), getUserById(friendId));
-                return getUserById(userId);
+                getById(userId).getFriendsIds().add(friendId);
+                getById(friendId).getFriendsIds().add(userId);
+                log.info("Пользователи {} и {} стали друзьями", getById(userId), getById(friendId));
+                return getById(userId);
             } else {
                 throw new ObjectNotFoundException("Пользоветель с id " + friendId + " не найден");
             }
@@ -42,13 +42,14 @@ public class UserService {
         }
     }
 
-    public User removeFriend(Long userId, Long friendId) {
+    @Override
+    public User remove(Long userId, Long friendId) {
         if (userStorage.getUsers().containsKey(userId)) {
             if (userStorage.getUsers().containsKey(friendId)) {
-                getUserById(userId).getFriendsIds().remove(friendId);
-                getUserById(friendId).getFriendsIds().remove(userId);
-                log.info("Пользователи {} и {} перестали быть друзьями", getUserById(userId), getUserById(friendId));
-                return getUserById(userId);
+                getById(userId).getFriendsIds().remove(friendId);
+                getById(friendId).getFriendsIds().remove(userId);
+                log.info("Пользователи {} и {} перестали быть друзьями", getById(userId), getById(friendId));
+                return getById(userId);
             } else {
                 throw new ObjectNotFoundException("Пользоветель с id " + friendId + " не найден");
             }
@@ -60,11 +61,11 @@ public class UserService {
     public List<User> getFriends(Long userId) {
         if (userStorage.getUsers().containsKey(userId)) {
             List<User> friends = new ArrayList<>();
-            Set<Long> userFriendsIds = getUserById(userId).getFriendsIds();
+            Set<Long> userFriendsIds = getById(userId).getFriendsIds();
             for (Long friendId : userFriendsIds) {
                 for (Long id : userStorage.getUsers().keySet()) {
                     if (friendId.equals(id)) {
-                        friends.add(getUserById(id));
+                        friends.add(getById(id));
                         break;
                     }
                 }
@@ -83,7 +84,8 @@ public class UserService {
         return commonFriends;
     }
 
-    public User getUserById(Long id) {
+    @Override
+    public User getById(Long id) {
         if (userStorage.getUsers().containsKey(id)) {
             return userStorage.getUsers().get(id);
         } else {
@@ -91,7 +93,8 @@ public class UserService {
         }
     }
 
-    public User addUser(User user) {
+    @Override
+    public User add(User user) {
         user = checkName(user);
         if (isLoginValid(user.getLogin()) && !userStorage.getUsers().containsKey(user.getId())) {
             if (user.getId() == null) {
@@ -104,7 +107,8 @@ public class UserService {
         }
     }
 
-    public User updateUser(User user) {
+    @Override
+    public User update(User user) {
         if (isLoginValid(user.getLogin()) && userStorage.getUsers().containsKey(user.getId())) {
             user = checkName(user);
             log.info("Обновлен пользователь " + user);
@@ -114,7 +118,8 @@ public class UserService {
         }
     }
 
-    public List<User> getUsers() {
+    @Override
+    public List<User> get() {
         return new ArrayList<>(userStorage.getUsers().values());
     }
 
