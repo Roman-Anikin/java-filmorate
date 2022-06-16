@@ -5,24 +5,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(FilmController.class)
+@AutoConfigureMockMvc
+@SpringBootTest
 public class FilmControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
     private final String url = "/films";
 
     @Autowired
@@ -158,7 +162,7 @@ public class FilmControllerTest {
         film.setDuration(15);
 
         MockHttpServletRequestBuilder mockRequest = putRequest(film);
-        mockMvc.perform(mockRequest).andExpect(status().isInternalServerError());
+        mockMvc.perform(mockRequest).andExpect(status().isNotFound());
 
         mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -171,7 +175,150 @@ public class FilmControllerTest {
         film2.setDuration(15);
 
         mockRequest = putRequest(film2);
-        mockMvc.perform(mockRequest).andExpect(status().isInternalServerError());
+        mockMvc.perform(mockRequest).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void getFilmById() throws Exception {
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name", is("film")));
+    }
+
+    @Test
+    public void addLike() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+
+        mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/like/1");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes", hasSize(1)))
+                .andExpect(jsonPath("$.likes[0]", is(1)));
+    }
+
+    @Test
+    public void removeLike() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+
+        mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/like/1");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.delete(url + "/1/like/1");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes", empty()));
+    }
+
+    @Test
+    public void getPopularFilms() throws Exception {
+        User user = new User();
+        user.setEmail("qwer@mail.com");
+        user.setLogin("qwerty");
+        user.setName("Nick");
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(user);
+        mockMvc.perform(mockRequest);
+
+        User user2 = new User();
+        user2.setEmail("asdf@mail.com");
+        user2.setLogin("asdfg");
+        user2.setName("Name");
+        user2.setBirthday(LocalDate.of(2000, 10, 10));
+
+        mockRequest = postRequest(user2);
+        mockMvc.perform(mockRequest);
+
+        User user3 = new User();
+        user3.setEmail("zxcv@mail.com");
+        user3.setLogin("zxcvb");
+        user3.setName("New name");
+        user3.setBirthday(LocalDate.of(2010, 1, 1));
+
+        mockRequest = postRequest(user3);
+        mockMvc.perform(mockRequest);
+
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+
+        mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        Film film2 = new Film();
+        film2.setName("new film");
+        film2.setDescription("new film desc");
+        film2.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film2.setDuration(15);
+
+        mockRequest = postRequest(film2);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/like/1");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/like/2");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/1/like/3");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/2/like/1");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/2/like/2");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/popular");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].name", is("film")))
+                .andExpect(jsonPath("$[1].name", is("new film")));
     }
 
     private @NotNull MockHttpServletRequestBuilder postRequest(Film film) throws JsonProcessingException {
@@ -186,5 +333,12 @@ public class FilmControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .content(this.objectMapper.writeValueAsString(film));
+    }
+
+    private @NotNull MockHttpServletRequestBuilder postRequest(User user) throws JsonProcessingException {
+        return MockMvcRequestBuilders.post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(this.objectMapper.writeValueAsString(user));
     }
 }
