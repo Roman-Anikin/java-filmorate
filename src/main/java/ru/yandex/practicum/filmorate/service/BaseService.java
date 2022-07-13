@@ -4,9 +4,9 @@ import java.util.List;
 
 public abstract class BaseService<T> {
 
-    abstract T add(Long firstId, Long secondId);
+    abstract void add(Long firstId, Long secondId);
 
-    abstract T remove(Long firstId, Long secondId);
+    abstract void remove(Long firstId, Long secondId);
 
     abstract T getById(Long id);
 

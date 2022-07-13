@@ -5,23 +5,32 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.FilmGenre;
+import ru.yandex.practicum.filmorate.model.FilmRating;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
 @SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql(scripts = "/test_data.sql")
+@Sql(scripts = "/delete-data.sql", executionPhase = AFTER_TEST_METHOD)
 public class FilmControllerTest {
 
     @Autowired
@@ -39,6 +48,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -58,6 +68,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
 
@@ -78,6 +89,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -88,6 +100,7 @@ public class FilmControllerTest {
         film2.setDescription("new film desc");
         film2.setReleaseDate(LocalDate.of(2000, 10, 10));
         film2.setDuration(15);
+        film2.setMpa(new FilmRating(2, "PG"));
 
         mockRequest = putRequest(film2);
         mockMvc.perform(mockRequest)
@@ -108,6 +121,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest).andExpect(status().isBadRequest());
@@ -123,6 +137,7 @@ public class FilmControllerTest {
                 "который за время «своего отсутствия», стал кандидатом Коломбани.");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest).andExpect(status().isBadRequest());
@@ -135,6 +150,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(1890, 3, 25));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest).andExpect(status().isBadRequest());
@@ -147,6 +163,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(0);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest).andExpect(status().isBadRequest());
@@ -160,6 +177,7 @@ public class FilmControllerTest {
         film.setDescription("new film desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(15);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = putRequest(film);
         mockMvc.perform(mockRequest).andExpect(status().isNotFound());
@@ -173,6 +191,7 @@ public class FilmControllerTest {
         film2.setDescription("film desc");
         film2.setReleaseDate(LocalDate.of(2000, 10, 10));
         film2.setDuration(15);
+        film2.setMpa(new FilmRating(1, "G"));
 
         mockRequest = putRequest(film2);
         mockMvc.perform(mockRequest).andExpect(status().isNotFound());
@@ -185,6 +204,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         MockHttpServletRequestBuilder mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -211,15 +231,14 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
 
         mockRequest = MockMvcRequestBuilders.put(url + "/1/like/1");
         mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.likes", hasSize(1)))
-                .andExpect(jsonPath("$.likes[0]", is(1)));
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -238,6 +257,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -246,9 +266,7 @@ public class FilmControllerTest {
         mockMvc.perform(mockRequest);
 
         mockRequest = MockMvcRequestBuilders.delete(url + "/1/like/1");
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.likes", empty()));
+        mockMvc.perform(mockRequest);
     }
 
     @Test
@@ -285,6 +303,7 @@ public class FilmControllerTest {
         film.setDescription("desc");
         film.setReleaseDate(LocalDate.of(2000, 10, 10));
         film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
 
         mockRequest = postRequest(film);
         mockMvc.perform(mockRequest);
@@ -294,6 +313,7 @@ public class FilmControllerTest {
         film2.setDescription("new film desc");
         film2.setReleaseDate(LocalDate.of(2000, 10, 10));
         film2.setDuration(15);
+        film2.setMpa(new FilmRating(1, "G"));
 
         mockRequest = postRequest(film2);
         mockMvc.perform(mockRequest);
@@ -320,6 +340,49 @@ public class FilmControllerTest {
                 .andExpect(jsonPath("$[0].name", is("film")))
                 .andExpect(jsonPath("$[1].name", is("new film")));
     }
+
+    @Test
+    public void addGenre() throws Exception {
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
+        film.setGenres(List.of(new FilmGenre(2, "Драма")));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.genres[0].id", is(2)));
+    }
+
+    @Test
+    public void changeGenre() throws Exception {
+        Film film = new Film();
+        film.setName("film");
+        film.setDescription("desc");
+        film.setReleaseDate(LocalDate.of(2000, 10, 10));
+        film.setDuration(5);
+        film.setMpa(new FilmRating(1, "G"));
+        film.setGenres(List.of(new FilmGenre(2, "Драма")));
+
+        MockHttpServletRequestBuilder mockRequest = postRequest(film);
+        mockMvc.perform(mockRequest);
+
+        film.setGenres(List.of(new FilmGenre(1, "Комедия"), new FilmGenre(2, "Драма")));
+        film.setId(1L);
+
+        mockRequest = putRequest(film);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.genres", hasSize(2)))
+                .andExpect(jsonPath("$.genres[0].id", is(1)));
+    }
+
 
     private @NotNull MockHttpServletRequestBuilder postRequest(Film film) throws JsonProcessingException {
         return MockMvcRequestBuilders.post(url)
