@@ -8,8 +8,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.FilmGenre;
-import ru.yandex.practicum.filmorate.service.FilmGenreService;
-import ru.yandex.practicum.filmorate.service.FilmRatingService;
+import ru.yandex.practicum.filmorate.model.FilmRating;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.sql.Date;
@@ -23,18 +22,14 @@ import java.util.List;
 public class FilmDbStorage implements FilmStorage {
 
     private final JdbcTemplate template;
-    private final FilmGenreService genreService;
-    private final FilmRatingService ratingService;
 
-    public FilmDbStorage(JdbcTemplate template, FilmGenreService service, FilmRatingService ratingService) {
+    public FilmDbStorage(JdbcTemplate template) {
         this.template = template;
-        this.genreService = service;
-        this.ratingService = ratingService;
     }
 
     @Override
     public Film addFilm(Film film) {
-        String sql = "insert into films (name, description, release_date, duration, rating_id) values (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO films (name, description, release_date, duration, rating_id) VALUES (?, ?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         template.update(con -> {
@@ -54,7 +49,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film updateFilm(Film film) {
-        String sql = "update films set name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? where " +
+        String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? where " +
                 "film_id = ?";
         template.update(sql,
                 film.getName(),
@@ -64,14 +59,17 @@ public class FilmDbStorage implements FilmStorage {
                 film.getMpa().getId(),
                 film.getId());
 
-        template.update("delete from film_genre where film_id = ?", film.getId());
+        template.update("DELETE FROM film_genre WHERE film_id = ?", film.getId());
         addFilmGenre(film);
         return film;
     }
 
     @Override
     public List<Film> getFilms() {
-        String sql = "select * from films order by film_id";
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.name AS r_name " +
+                "FROM films AS f " +
+                "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
+                "ORDER BY film_id";
         List<Film> films = template.query(sql, (rs, rowNum) -> makeFilm(rs));
         for (Film film : films) {
             setGenre(film);
@@ -81,7 +79,10 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film getFilmById(Long id) {
-        String sql = "select * from films where film_id = ?";
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.name AS r_name " +
+                "FROM films AS f " +
+                "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
+                "WHERE film_id = ?";
         Film film = template.queryForObject(sql, (rs, rowNum) -> makeFilm(rs), id);
         setGenre(film);
         return film;
@@ -89,24 +90,26 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public void addLike(Long filmId, Long userId) {
-        String sql = "insert into film_likes (film_id, user_id) values (?, ?)";
+        String sql = "INSERT INTO film_likes (film_id, user_id) VALUES (?, ?)";
         template.update(sql, filmId, userId);
     }
 
     @Override
     public void removeLike(Long filmId, Long userId) {
-        String sql = "delete from film_likes where film_id = ? and user_id = ?";
+        String sql = "DELETE FROM film_likes WHERE film_id = ? AND user_id = ?";
         template.update(sql, filmId, userId);
     }
 
     @Override
     public List<Film> getPopularFilms(int count) {
-        String sql = "select * from films where film_id in " +
-                "(select film_id from " +
-                "(select distinct f.film_id, count(fl.user_id) from films as f " +
-                "left join film_likes as fl on f.film_id = fl.film_id " +
-                "group by f.film_id, fl.user_id order by count(fl.user_id) desc) " +
-                "limit ?)";
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.name AS r_name " +
+                "FROM films AS f " +
+                "LEFT JOIN " +
+                "(SELECT film_id, COUNT(user_id) AS user_id FROM film_likes GROUP BY film_id ORDER BY user_id DESC) " +
+                "AS fl ON f.film_id = fl.film_id " +
+                "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
+                "ORDER BY user_id DESC " +
+                "LIMIT ?";
         List<Film> films = template.query(sql, (rs, rowNum) -> makeFilm(rs), count);
         for (Film film : films) {
             setGenre(film);
@@ -115,17 +118,19 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private void addFilmGenre(@NotNull Film film) {
-        String sql = "insert into film_genre (film_id, genre_id) values (?, ?)";
+        String sql = "INSERT INTO film_genre (film_id, genre_id) VALUES (?, ?)";
         for (FilmGenre genre : film.getGenres()) {
-            if (genreService.getGenreById(genre.getId()) != null) {
-                template.update(sql, film.getId(), genre.getId());
-            }
+            template.update(sql, film.getId(), genre.getId());
+
         }
     }
 
     private void setGenre(@NotNull Film film) {
-        String sql = "select * from genres where genre_id in " +
-                "(select genre_id from film_genre where film_id = ?)";
+        String sql = "SELECT g.genre_id, g.name " +
+                "FROM films AS f " +
+                "INNER JOIN film_genre AS fg ON f.film_id = fg.film_id " +
+                "INNER JOIN genres AS g ON fg.genre_id = g.genre_id " +
+                "WHERE f.film_id = ?";
         film.setGenres(template.query(sql, (rs, rowNum) ->
                         new FilmGenre(rs.getInt("genre_id"), rs.getString("name")),
                 film.getId()));
@@ -137,6 +142,6 @@ public class FilmDbStorage implements FilmStorage {
                 rs.getString("description"),
                 rs.getDate("release_date").toLocalDate(),
                 rs.getInt("duration"),
-                ratingService.getRatingById(rs.getInt("rating_id")));
+                new FilmRating(rs.getInt("rating_id"), rs.getString("r_name")));
     }
 }

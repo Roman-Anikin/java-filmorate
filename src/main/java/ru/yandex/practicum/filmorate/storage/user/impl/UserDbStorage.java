@@ -27,7 +27,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User addUser(User user) {
-        String sql = "insert into users (email, login, name, birthday) values (?, ?, ?, ?)";
+        String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         template.update(con -> {
@@ -45,7 +45,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
-        String sql = "update users set email = ?, login = ?, name = ?, birthday = ? where user_id = ?";
+        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
         template.update(sql,
                 user.getEmail(),
                 user.getLogin(),
@@ -57,43 +57,44 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public List<User> getUsers() {
-        String sql = "select * from users order by user_id";
+        String sql = "SELECT * FROM users ORDER BY user_id";
         return template.query(sql, (rs, rowNum) -> makeUser(rs));
     }
 
     @Override
     public User getUserById(Long id) {
-        String sql = "select * from users where user_id = ?";
+        String sql = "SELECT * FROM users WHERE user_id = ?";
         return template.queryForObject(sql, (rs, rowNum) -> makeUser(rs), id);
     }
 
     @Override
     public void addFriend(Long user_id, Long friend_id) {
-        String sql = "insert into user_friends (user_id, friend_id) values (?, ?)";
+        String sql = "INSERT INTO user_friends (user_id, friend_id) VALUES (?, ?)";
         template.update(sql, user_id, friend_id);
     }
 
     @Override
     public void removeFriend(Long user_id, Long friend_id) {
-        String sql = "delete from user_friends where user_id = ? and friend_id = ?";
+        String sql = "DELETE FROM user_friends WHERE user_id = ? AND friend_id = ?";
         template.update(sql, user_id, friend_id);
     }
 
     @Override
     public List<User> getFriends(Long id) {
-        String sql = "select * from users where user_id in " +
-                "(select friend_id from user_friends where user_id = ?)" +
-                " order by user_id";
+        String sql = "SELECT u.user_id, u.email, u.login, u.name, u.birthday " +
+                "FROM users AS u " +
+                "RIGHT JOIN user_friends uf ON uf.friend_id = u.user_id " +
+                "WHERE uf.user_id = ?";
         return template.query(sql, (rs, rowNum) -> makeUser(rs), id);
     }
 
     @Override
     public List<User> getCommonFriends(Long firstUserId, Long secondUserId) {
-        String sql = "select * from users where user_id in ( " +
-                "select friend_id from user_friends where user_id = ? " +
-                "intersect " +
-                "select friend_id from user_friends where user_id = ?) " +
-                "order by user_id";
+        String sql = "SELECT * FROM users WHERE user_id IN ( " +
+                "SELECT friend_id FROM user_friends WHERE user_id = ? " +
+                "INTERSECT " +
+                "SELECT friend_id FROM user_friends WHERE user_id = ?) " +
+                "ORDER BY user_id";
         return template.query(sql, (rs, rowNum) -> makeUser(rs), firstUserId, secondUserId);
     }
 

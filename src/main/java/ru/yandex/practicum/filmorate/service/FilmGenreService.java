@@ -5,7 +5,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ObjectNotFoundException;
 import ru.yandex.practicum.filmorate.model.FilmGenre;
-import ru.yandex.practicum.filmorate.storage.film.impl.FilmGenreDaoImpl;
+import ru.yandex.practicum.filmorate.storage.film.FilmGenreDao;
 
 import java.util.List;
 
@@ -13,9 +13,9 @@ import java.util.List;
 @Service
 public class FilmGenreService {
 
-    private final FilmGenreDaoImpl filmGenreDao;
+    private final FilmGenreDao filmGenreDao;
 
-    public FilmGenreService(FilmGenreDaoImpl filmGenreDao) {
+    public FilmGenreService(FilmGenreDao filmGenreDao) {
         this.filmGenreDao = filmGenreDao;
     }
 

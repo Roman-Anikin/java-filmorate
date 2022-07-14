@@ -24,18 +24,19 @@ public class FilmService extends BaseService<Film> {
     @Qualifier("filmDbStorage")
     private final FilmStorage filmStorage;
     private final UserService userService;
-    private final FilmGenreService filmGenreService;
+    private final FilmGenreService genreService;
 
     @Autowired
     public FilmService(FilmStorage filmStorage, UserService userService, FilmGenreService filmGenreService) {
         this.filmStorage = filmStorage;
         this.userService = userService;
-        this.filmGenreService = filmGenreService;
+        this.genreService = filmGenreService;
     }
 
     @Override
     public Film add(Film film) {
         checkReleaseDate(film.getReleaseDate());
+        checkGenres(film.getGenres());
         film = filmStorage.addFilm(film);
         log.info("Добавлен фильм " + film);
         return film;
@@ -104,11 +105,13 @@ public class FilmService extends BaseService<Film> {
     private void checkGenres(@NotNull List<FilmGenre> genres) {
         Set<Integer> ids = new HashSet<>();
         for (FilmGenre genre : genres) {
-            ids.add(genre.getId());
+            if (genreService.getGenreById(genre.getId()) != null) {
+                ids.add(genre.getId());
+            }
         }
         genres.clear();
         for (Integer i : ids) {
-            genres.add(filmGenreService.getGenreById(i));
+            genres.add(genreService.getGenreById(i));
         }
     }
 }
