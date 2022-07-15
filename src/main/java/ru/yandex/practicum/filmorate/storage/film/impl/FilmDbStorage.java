@@ -43,7 +43,6 @@ public class FilmDbStorage implements FilmStorage {
         }, keyHolder);
 
         film.setId(keyHolder.getKey().longValue());
-        addFilmGenre(film);
         return film;
     }
 
@@ -58,9 +57,6 @@ public class FilmDbStorage implements FilmStorage {
                 film.getDuration(),
                 film.getMpa().getId(),
                 film.getId());
-
-        template.update("DELETE FROM film_genre WHERE film_id = ?", film.getId());
-        addFilmGenre(film);
         return film;
     }
 
@@ -70,11 +66,7 @@ public class FilmDbStorage implements FilmStorage {
                 "FROM films AS f " +
                 "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
                 "ORDER BY film_id";
-        List<Film> films = template.query(sql, (rs, rowNum) -> makeFilm(rs));
-        for (Film film : films) {
-            setGenre(film);
-        }
-        return films;
+        return template.query(sql, (rs, rowNum) -> makeFilm(rs));
     }
 
     @Override
@@ -83,9 +75,7 @@ public class FilmDbStorage implements FilmStorage {
                 "FROM films AS f " +
                 "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
                 "WHERE film_id = ?";
-        Film film = template.queryForObject(sql, (rs, rowNum) -> makeFilm(rs), id);
-        setGenre(film);
-        return film;
+        return template.queryForObject(sql, (rs, rowNum) -> makeFilm(rs), id);
     }
 
     @Override
@@ -110,22 +100,11 @@ public class FilmDbStorage implements FilmStorage {
                 "INNER JOIN rating AS r ON f.rating_id = r.rating_id " +
                 "ORDER BY user_id DESC " +
                 "LIMIT ?";
-        List<Film> films = template.query(sql, (rs, rowNum) -> makeFilm(rs), count);
-        for (Film film : films) {
-            setGenre(film);
-        }
-        return films;
+        return template.query(sql, (rs, rowNum) -> makeFilm(rs), count);
     }
 
-    private void addFilmGenre(@NotNull Film film) {
-        String sql = "INSERT INTO film_genre (film_id, genre_id) VALUES (?, ?)";
-        for (FilmGenre genre : film.getGenres()) {
-            template.update(sql, film.getId(), genre.getId());
-
-        }
-    }
-
-    private void setGenre(@NotNull Film film) {
+    @Override
+    public void setFilmGenre(@NotNull Film film) {
         String sql = "SELECT g.genre_id, g.name " +
                 "FROM films AS f " +
                 "INNER JOIN film_genre AS fg ON f.film_id = fg.film_id " +
@@ -134,6 +113,16 @@ public class FilmDbStorage implements FilmStorage {
         film.setGenres(template.query(sql, (rs, rowNum) ->
                         new FilmGenre(rs.getInt("genre_id"), rs.getString("name")),
                 film.getId()));
+    }
+
+    @Override
+    public void addFilmGenre(@NotNull Film film) {
+        template.update("DELETE FROM film_genre WHERE film_id = ?", film.getId());
+
+        String sql = "INSERT INTO film_genre (film_id, genre_id) VALUES (?, ?)";
+        for (FilmGenre genre : film.getGenres()) {
+            template.update(sql, film.getId(), genre.getId());
+        }
     }
 
     private Film makeFilm(@NotNull ResultSet rs) throws SQLException {

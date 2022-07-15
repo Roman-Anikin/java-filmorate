@@ -20,4 +20,8 @@ public interface FilmStorage {
 
     List<Film> getPopularFilms(int count);
 
+    void setFilmGenre(Film film);
+
+    void addFilmGenre(Film film);
+
 }

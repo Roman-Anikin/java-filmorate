@@ -38,6 +38,7 @@ public class FilmService extends BaseService<Film> {
         checkReleaseDate(film.getReleaseDate());
         checkGenres(film.getGenres());
         film = filmStorage.addFilm(film);
+        filmStorage.addFilmGenre(film);
         log.info("Добавлен фильм " + film);
         return film;
     }
@@ -48,6 +49,7 @@ public class FilmService extends BaseService<Film> {
         checkGenres(film.getGenres());
         if (getById(film.getId()) != null) {
             filmStorage.updateFilm(film);
+            filmStorage.addFilmGenre(film);
             log.info("Обновлен фильм " + film);
             return film;
         } else {
@@ -58,6 +60,9 @@ public class FilmService extends BaseService<Film> {
     @Override
     public List<Film> get() {
         List<Film> films = filmStorage.getFilms();
+        for (Film film : films) {
+            filmStorage.setFilmGenre(film);
+        }
         log.info("Получен список фильмов {}", films);
         return films;
     }
@@ -66,6 +71,7 @@ public class FilmService extends BaseService<Film> {
     public Film getById(Long id) {
         try {
             Film film = filmStorage.getFilmById(id);
+            filmStorage.setFilmGenre(film);
             log.info("Получен фильм {}", film);
             return film;
         } catch (EmptyResultDataAccessException e) {
@@ -91,6 +97,9 @@ public class FilmService extends BaseService<Film> {
 
     public List<Film> getPopularFilms(int count) {
         List<Film> films = filmStorage.getPopularFilms(count);
+        for (Film film : films) {
+            filmStorage.setFilmGenre(film);
+        }
         log.info("Получен список популярных фильмов {}", films);
         return films;
     }

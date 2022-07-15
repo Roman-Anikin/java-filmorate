@@ -50,4 +50,14 @@ public class InMemoryFilmStorage implements FilmStorage {
     public List<Film> getPopularFilms(int count) {
         return null;
     }
+
+    @Override
+    public void setFilmGenre(Film film) {
+
+    }
+
+    @Override
+    public void addFilmGenre(Film film) {
+
+    }
 }
