@@ -1,2 +1,2 @@
 # java-filmorate
-Template repository for Filmorate project.
+![ER-модель](src/main/resources/filmorate.jpeg)

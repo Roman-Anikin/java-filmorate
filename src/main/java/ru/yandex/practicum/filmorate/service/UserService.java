@@ -3,8 +3,9 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.ObjectAlreadyExistException;
 import ru.yandex.practicum.filmorate.exception.ObjectNotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
@@ -12,14 +13,13 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Service
 public class UserService extends BaseService<User> {
 
+    @Qualifier("userDbStorage")
     private final UserStorage userStorage;
-    private Long id = 1L;
 
     @Autowired
     public UserService(UserStorage userStorage) {
@@ -27,114 +27,87 @@ public class UserService extends BaseService<User> {
     }
 
     @Override
-    public User add(Long userId, Long friendId) {
-        if (userStorage.getUsers().containsKey(userId)) {
-            if (userStorage.getUsers().containsKey(friendId)) {
-                getById(userId).getFriendsIds().add(friendId);
-                getById(friendId).getFriendsIds().add(userId);
-                log.info("Пользователи {} и {} стали друзьями", getById(userId), getById(friendId));
-                return getById(userId);
-            } else {
-                throw new ObjectNotFoundException("Пользоветель с id " + friendId + " не найден");
-            }
-        } else {
-            throw new ObjectNotFoundException("Пользоветель с id " + userId + " не найден");
-        }
+    public User add(User user) {
+        checkName(user);
+        checkLogin(user.getLogin());
+        user = userStorage.addUser(user);
+        log.info("Добавлен пользователь {}", user);
+        return user;
     }
 
     @Override
-    public User remove(Long userId, Long friendId) {
-        if (userStorage.getUsers().containsKey(userId)) {
-            if (userStorage.getUsers().containsKey(friendId)) {
-                getById(userId).getFriendsIds().remove(friendId);
-                getById(friendId).getFriendsIds().remove(userId);
-                log.info("Пользователи {} и {} перестали быть друзьями", getById(userId), getById(friendId));
-                return getById(userId);
-            } else {
-                throw new ObjectNotFoundException("Пользоветель с id " + friendId + " не найден");
-            }
-        } else {
-            throw new ObjectNotFoundException("Пользоветель с id " + userId + " не найден");
+    public User update(User user) {
+        checkName(user);
+        checkLogin(user.getLogin());
+        if (getById(user.getId()) != null) {
+            userStorage.updateUser(user);
+            log.info("Обновлен пользователь {}", user);
         }
+        return user;
     }
 
-    public List<User> getFriends(Long userId) {
-        if (userStorage.getUsers().containsKey(userId)) {
-            List<User> friends = new ArrayList<>();
-            Set<Long> userFriendsIds = getById(userId).getFriendsIds();
-            for (Long friendId : userFriendsIds) {
-                for (Long id : userStorage.getUsers().keySet()) {
-                    if (friendId.equals(id)) {
-                        friends.add(getById(id));
-                        break;
-                    }
-                }
-            }
-            return friends;
-        } else {
-            throw new ObjectNotFoundException("Пользоветель с id " + userId + " не найден");
-        }
-    }
-
-    public List<User> getCommonFriends(Long firstUserId, Long secondUserId) {
-        List<User> firstUserFriends = getFriends(firstUserId);
-        List<User> secondUserFriends = getFriends(secondUserId);
-        List<User> commonFriends = new ArrayList<>(firstUserFriends);
-        commonFriends.retainAll(secondUserFriends);
-        return commonFriends;
+    @Override
+    public List<User> get() {
+        List<User> users = userStorage.getUsers();
+        log.info("Получен список пользователей {}", users);
+        return users;
     }
 
     @Override
     public User getById(Long id) {
-        if (userStorage.getUsers().containsKey(id)) {
-            return userStorage.getUsers().get(id);
-        } else {
+        try {
+            User user = userStorage.getUserById(id);
+            log.info("Получен пользователь {}", user);
+            return user;
+        } catch (EmptyResultDataAccessException e) {
             throw new ObjectNotFoundException("Пользоветель с id " + id + " не найден");
         }
     }
 
     @Override
-    public User add(User user) {
-        user = checkName(user);
-        if (isLoginValid(user.getLogin()) && !userStorage.getUsers().containsKey(user.getId())) {
-            if (user.getId() == null) {
-                user.setId(id++);
-            }
-            log.info("Добавлен пользователь " + user);
-            return userStorage.addUser(user);
-        } else {
-            throw new ObjectAlreadyExistException("Попытка добавить пользователя {}, который уже есть в списке " + user);
+    public void add(Long userId, Long friendId) {
+        if (getById(userId) != null && getById(friendId) != null) {
+            userStorage.addFriend(userId, friendId);
+            log.info("Пользователь {} добавил в друзья {}", getById(userId), getById(friendId));
         }
     }
 
     @Override
-    public User update(User user) {
-        if (isLoginValid(user.getLogin()) && userStorage.getUsers().containsKey(user.getId())) {
-            user = checkName(user);
-            log.info("Обновлен пользователь " + user);
-            return userStorage.updateUser(user);
-        } else {
-            throw new ObjectNotFoundException("Попытка обновить пользователя {}, которого нет в списке " + user);
+    public void remove(Long userId, Long friendId) {
+        if (getById(userId) != null && getById(friendId) != null) {
+            userStorage.removeFriend(userId, friendId);
+            log.info("Пользователь {} удалил из друзей {}", getById(userId), getById(friendId));
         }
     }
 
-    @Override
-    public List<User> get() {
-        return new ArrayList<>(userStorage.getUsers().values());
+    public List<User> getFriends(Long userId) {
+        List<User> friends = new ArrayList<>();
+        if (getById(userId) != null) {
+            friends = userStorage.getFriends(userId);
+            log.info("Получен список друзей {} пользователя с id {}", friends, userId);
+        }
+        return friends;
     }
 
-    private @NotNull User checkName(@NotNull User user) {
-        if (user.getName() == null || user.getName().isBlank() || user.getName().isBlank()) {
+    public List<User> getCommonFriends(Long firstUserId, Long secondUserId) {
+        List<User> friends = new ArrayList<>();
+        if (getById(firstUserId) != null && getById(secondUserId) != null) {
+            friends = userStorage.getCommonFriends(firstUserId, secondUserId);
+            log.info("Получен список общих друзей пользователей с id {} и {} {}", firstUserId, secondUserId, friends);
+        }
+        return friends;
+    }
+
+    private void checkName(@NotNull User user) {
+        if (user.getName() == null || user.getName().isBlank() || user.getName().isEmpty()) {
             user.setName(user.getLogin());
         }
-        return user;
     }
 
-    private boolean isLoginValid(@NotNull String login) {
+    private void checkLogin(@NotNull String login) {
         if (login.contains(" ")) {
             throw new ValidationException("Логин не может быть пустым и содержать пробелы. Переданный логин: "
                     + login);
         }
-        return true;
     }
 }

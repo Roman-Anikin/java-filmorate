@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -16,11 +18,15 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
 @SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql(scripts = "/test_data.sql")
+@Sql(scripts = "/delete-data.sql", executionPhase = AFTER_TEST_METHOD)
 public class UserControllerTest {
 
     @Autowired
@@ -212,9 +218,18 @@ public class UserControllerTest {
 
         mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
         mockMvc.perform(mockRequest)
+                .andExpect(status().isOk());
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1/friends");
+        mockMvc.perform(mockRequest)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.friendsIds", hasSize(1)))
-                .andExpect(jsonPath("$.friendsIds[0]", is(2)));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is(2)));
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/2/friends");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
@@ -242,8 +257,17 @@ public class UserControllerTest {
 
         mockRequest = MockMvcRequestBuilders.delete(url + "/1/friends/2");
         mockMvc.perform(mockRequest)
+                .andExpect(status().isOk());
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/1/friends");
+        mockMvc.perform(mockRequest)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.friendsIds", empty()));
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        mockRequest = MockMvcRequestBuilders.get(url + "/2/friends");
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
@@ -272,7 +296,7 @@ public class UserControllerTest {
         mockRequest = MockMvcRequestBuilders.get(url + "/1/friends");
         mockMvc.perform(mockRequest)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].friendsIds", hasSize(1)))
+                .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id", is(2)));
     }
 
@@ -308,16 +332,21 @@ public class UserControllerTest {
         mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/2");
         mockMvc.perform(mockRequest);
 
+        mockRequest = MockMvcRequestBuilders.put(url + "/2/friends/1");
+        mockMvc.perform(mockRequest);
+
         mockRequest = MockMvcRequestBuilders.put(url + "/1/friends/3");
+        mockMvc.perform(mockRequest);
+
+        mockRequest = MockMvcRequestBuilders.put(url + "/3/friends/1");
         mockMvc.perform(mockRequest);
 
         mockRequest = MockMvcRequestBuilders.get(url + "/2/friends/common/3");
         mockMvc.perform(mockRequest)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].friendsIds", hasSize(2)))
+                .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id", is(1)));
     }
-
 
     private @NotNull MockHttpServletRequestBuilder postRequest(User user) throws JsonProcessingException {
         return MockMvcRequestBuilders.post(url)
